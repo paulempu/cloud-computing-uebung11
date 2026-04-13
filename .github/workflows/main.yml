@@ -1,0 +1,49 @@
+name: Cloud Computing Übung 11
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  schedule:
+    - cron: '0 12 * * *'  # Täglich um 12:00 Uhr
+  workflow_dispatch:      # Ermöglicht manuelles Starten (Button in GitHub)
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Installiere Tools
+        run: |
+          pip install -r requirements.txt
+
+      - name: 1. Syntax Check (Compileall)
+        run: python -m compileall .
+
+      - name: 2. Linting (Ruff)
+        run: ruff check .
+        continue-on-error: true # Damit die Pipeline trotz "Fehler" weiterläuft
+
+      - name: 3. Automatisierte Tests (Pytest)
+        run: pytest
+        continue-on-error: true
+
+      - name: 4. Security Check (Bandit)
+        run: bandit -r app
+        continue-on-error: true
+
+      - name: 5. Vulnerability Audit (Pip-audit)
+        run: pip-audit -r requirements.txt -f json -o audit.json
+        continue-on-error: true
+
+      - name: Bericht als Artifact speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: audit.json
